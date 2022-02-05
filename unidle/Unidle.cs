@@ -8,11 +8,24 @@ using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Runtime.InteropServices;
 
 namespace unidle
 {
     public partial class ServiceUnidle : ServiceBase
     {
+        private enum ExecutionState : uint
+        {
+            EsAwaymodeRequired = 0x00000040,
+            EsContinuous = 0x80000000,
+            EsDisplayRequired = 0x00000002,
+            EsSystemRequired = 0x00000001,
+            EsUserPresent = 0x00000004,
+        }
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern ExecutionState SetThreadExecutionState(ExecutionState esFlags);
+
         public ServiceUnidle()
         {
             InitializeComponent();
@@ -37,7 +50,7 @@ namespace unidle
             // TODO: Insert monitoring activities here.
             eventLog.WriteEntry("Monitoring the System", EventLogEntryType.Information, ++eventId);
         }
-        
+
         private int eventId = 0;
 
         protected override void OnStart(string[] args)
