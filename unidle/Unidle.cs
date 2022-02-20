@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
+﻿//using System;
+//using System.Diagnostics;
 using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
 using System.Timers;
 using System.Runtime.InteropServices;
+//using Microsoft.Win32;
 
 namespace unidle
 {
@@ -16,11 +11,11 @@ namespace unidle
     {
         private enum ExecutionState : uint
         {
-            EsAwaymodeRequired = 0x00000040,
-            EsContinuous = 0x80000000,
-            EsDisplayRequired = 0x00000002,
-            EsSystemRequired = 0x00000001,
-            EsUserPresent = 0x00000004,
+            ES_AWAYMODE_REQUIRED =0x00000040,
+            ES_CONTINUOUS = 0x80000000,
+            ES_DISPLAY_REQUIRED = 0x00000002,
+            ES_SYSTEM_REQUIRED = 0x00000001,
+            ES_USER_PRESENT = 0x00000004,
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -36,39 +31,61 @@ namespace unidle
             }
             eventLog.Source = "UnidleSource";
             eventLog.Log = "UnidleLog";
-            Timer timer = new Timer
-            {
-                Interval = 60000 // 60 seconds
-            };
-            timer.Elapsed += new ElapsedEventHandler(this.OnTimer);
-            timer.Start();
-            CanHandleSessionChangeEvent = true;
+            //timer = new Timer
+            //{
+            //    Interval = 60000 // 60 seconds
+            //};
+            //timer.Elapsed += new ElapsedEventHandler(this.OnTimer);
+            //timer.Start();
+            this.CanHandleSessionChangeEvent = true;
         }
 
         public void OnTimer(object sender, ElapsedEventArgs args)
         {
             // TODO: Insert monitoring activities here.
-            eventLog.WriteEntry("Monitoring the System", EventLogEntryType.Information, ++eventId);
+            //eventLog.WriteEntry("Monitoring the System", EventLogEntryType.Information, ++eventId);
         }
 
-        private int eventId = 0;
+        //private int eventId = 0;
 
         protected override void OnStart(string[] args)
         {
-            eventLog.WriteEntry("In OnStart.");
-        }
-
-        protected override void OnStop()
-        {
-            eventLog.WriteEntry("In OnStop.");
+            eventLog.WriteEntry("Service started");
+            EnableUnidling();
         }
 
         protected override void OnSessionChange(SessionChangeDescription changeDescription)
         {
-            EventLog.WriteEntry("SimpleService.OnSessionChange", DateTime.Now.ToLongTimeString() +
-                " - Session change notice received: " +
-                changeDescription.Reason.ToString() + "  Session ID: " +
-                changeDescription.SessionId.ToString());
+            eventLog.WriteEntry(changeDescription.Reason.ToString());
+            if ((changeDescription.Reason == SessionChangeReason.SessionLock) || (changeDescription.Reason == SessionChangeReason.SessionLogoff))
+            {
+                DisableUnidling();
+                //timer.Enabled = false;
+            }
+            else if ((changeDescription.Reason == SessionChangeReason.SessionUnlock) || (changeDescription.Reason == SessionChangeReason.SessionLogon))
+            {
+                EnableUnidling();
+                //timer.Enabled = true;
+            }
         }
+
+        protected override void OnStop()
+        {
+            DisableUnidling();
+            eventLog.WriteEntry("Service stopped");
+        }
+
+        public void EnableUnidling()
+        {
+            eventLog.WriteEntry("Unidling enabled");
+            SetThreadExecutionState(ExecutionState.ES_CONTINUOUS | ExecutionState.ES_DISPLAY_REQUIRED);
+        }
+
+        public void DisableUnidling()
+        {
+            eventLog.WriteEntry("Unidling disabled");
+            SetThreadExecutionState(ExecutionState.ES_CONTINUOUS);
+        }
+
     }
 }
